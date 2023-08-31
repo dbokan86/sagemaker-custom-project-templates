@@ -147,11 +147,11 @@ Resources:
           - Effect: Allow
             Principal:
               Federated:
-                - 'arn:aws:iam::542204691437:oidc-provider/gitlab.com'
+                - 'arn:aws:iam::542204691437:oidc-provider/vcs.levi9.com'
             Action: 'sts:AssumeRoleWithWebIdentity'
             Condition:
               StringLike:
-                gitlab.com:sub:
+                vcs.levi9.com:sub:
                   - 'project_path:l9-mlops*'
       Policies:
         - PolicyName: !Join ['-',['SM-Projects-GitLab-User-Policy', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]]]
@@ -643,8 +643,7 @@ Resources:
         AWSDEFAULT___CODE_STAGING_BUCKET___: !Ref BootstrapS3Bucket
         AWSDEFAULT___PROJECT_NAME___: !Ref SageMakerProjectsProjectNameParameter
         AWSDEFAULT___GITLAB_TOKEN_SECRET_NAME___: !Join ['-',['SageMaker-Projects-GitLab-Token', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]]]
-        AWSDEFAULT___IAM_ACCESS_KEY_SECRET_NAME___: !Join ['-',['SageMaker-Projects-GitLab-UserAccessKey', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]]]
-        AWSDEFAULT___IAM_SECRET_KEY_SECRET_NAME___: !Join ['-',['SageMaker-Projects-GitLab-UserSecretKey', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]]]
+        AWSDEFAULT___GITLAB_ROLE_ARN___: !GetAtt GitLabIAMRole.Arn
         AWSDEFAULT___USE_ROLE___: !GetAtt ServiceCatalogProductUseRole.Arn
       Archives:
         - ['mlops-gitlab-project-seedcode-model-deploy.zip', '/seedcode/mlops-gitlab-project-seedcode-model-deploy']
