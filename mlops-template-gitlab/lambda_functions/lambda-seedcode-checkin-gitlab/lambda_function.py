@@ -151,6 +151,7 @@ def lambda_handler(event, context):
         deploy_project.variables.create({'key':'ARTIFACT_BUCKET', 'value' : 'sagemaker-project-' + os.environ['SageMakerProjectId']})
         deploy_project.variables.create({'key':'SAGEMAKER_PROJECT_ARN', 'value':'arn:aws:sagemaker:' + region + ':' + os.environ['AccountId'] + ':project/' + os.environ['SageMakerProjectName']})
         deploy_project.variables.create({'key':'MODEL_EXECUTION_ROLE_ARN', 'value' : os.environ['Role']})
+        deploy_project.variables.create({'key':'GITLAB_IAM_ROLE_ARN', 'value' : os.environ['GitlabRoleARN']})
 
     except Exception as e:
         logging.error("Project variables could not be created for model deploy")
