@@ -13,12 +13,18 @@ before_script:
   - pip install virtualenv
   - virtualenv venv
   - source venv/bin/activate
+  - mkdir -p ~/.aws
+  - echo "${MY_OIDC_TOKEN}" > /tmp/web_identity_token
+  - echo -e "[default]\nrole_arn=${GITLAB_IAM_ROLE_ARN}\nweb_identity_token_file=/tmp/web_identity_token" > ~/.aws/config
 
 stages:
   - training
 
 train-model:
   stage: training
+  id_tokens:
+    MY_OIDC_TOKEN:
+      aud: "https://$CI_SERVER_HOST"
   script: 
       - pip install --upgrade --force-reinstall . "awscli>1.20.30"
       - export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
