@@ -90,38 +90,6 @@ def lambda_handler(event, context):
             'message' : FETCH_GITLAB_TOKEN_SECRET_ERROR_MSG
         
         }
-
-    #Fetch IAM Access Key ID Secret
-
-    FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG = "IAM Access Key was not retrieved from Secrets Manager."
-
-    try:
-        iam_access_key = get_secret('IAMAccessKeySecretName') 
-        if iam_access_key is None:
-            raise Exception(FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG)
-    except Exception as e:
-        logging.error(FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG)
-        cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
-        return { 
-            'message' : FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG
-        
-        }
-
-    #Fetch IAM Secret Key Secret
-
-    FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG = "IAM Secret Key was not retrieved from Secrets Manager."
-
-    try:
-        iam_secret_key = get_secret('IAMSecretKeySecretName') 
-        if iam_secret_key is None:
-            raise Exception(FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG)
-    except Exception as e:
-        logging.error(FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG)
-        cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
-        return { 
-            'message' : FETCH_IAM_ACCESS_KEY_SECRET_ERROR_MSG
-        
-        }
  
     # Configure SDKs for GitLab and S3
     gl = gitlab.Gitlab(gitlab_server_uri, private_token=gitlab_private_token)
@@ -167,8 +135,7 @@ def lambda_handler(event, context):
         build_project.variables.create({'key':'ARTIFACT_BUCKET', 'value' : 'sagemaker-project-' + os.environ['SageMakerProjectId']})
         build_project.variables.create({'key':'SAGEMAKER_PROJECT_ARN', 'value':'arn:aws:sagemaker:' + region + ':' + os.environ['AccountId'] + ':project/' + os.environ['SageMakerProjectName']})
         build_project.variables.create({'key':'SAGEMAKER_PIPELINE_ROLE_ARN', 'value' : os.environ['Role']})
-        build_project.variables.create({'key':'AWS_ACCESS_KEY_ID', 'value' : iam_access_key})
-        build_project.variables.create({'key':'AWS_SECRET_ACCESS_KEY', 'value' : iam_secret_key})
+        build_project.variables.create({'key':'GITLAB_IAM_ROLE_ARN', 'value' : os.environ['GitlabRoleARN']})
     except Exception as e:
         logging.error("Project variables could not be created for model build")
         logging.error(e)
@@ -184,8 +151,8 @@ def lambda_handler(event, context):
         deploy_project.variables.create({'key':'ARTIFACT_BUCKET', 'value' : 'sagemaker-project-' + os.environ['SageMakerProjectId']})
         deploy_project.variables.create({'key':'SAGEMAKER_PROJECT_ARN', 'value':'arn:aws:sagemaker:' + region + ':' + os.environ['AccountId'] + ':project/' + os.environ['SageMakerProjectName']})
         deploy_project.variables.create({'key':'MODEL_EXECUTION_ROLE_ARN', 'value' : os.environ['Role']})
-        deploy_project.variables.create({'key':'AWS_ACCESS_KEY_ID', 'value' : iam_access_key})
-        deploy_project.variables.create({'key':'AWS_SECRET_ACCESS_KEY', 'value' : iam_secret_key})
+        deploy_project.variables.create({'key':'GITLAB_IAM_ROLE_ARN', 'value' : os.environ['GitlabRoleARN']})
+
     except Exception as e:
         logging.error("Project variables could not be created for model deploy")
         logging.error(e)
