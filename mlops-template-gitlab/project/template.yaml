@@ -158,7 +158,7 @@ Resources:
       Runtime: python3.9
       Role: AWSDEFAULT___USE_ROLE___
       Handler: index.lambda_handler
-      Timeout: 300
+      Timeout: 120
       Code:
         ZipFile: |
           import json
@@ -234,6 +234,7 @@ Resources:
     Type: 'AWS::SQS::Queue'
     Properties:
       QueueName: !Sub ${SageMakerProjectName}-SM-Pipeline-CallbackQueue
+      VisibilityTimeout: 180
 
   SQSEventSourceMapping:
     Type: AWS::Lambda::EventSourceMapping
