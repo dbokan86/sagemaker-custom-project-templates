@@ -462,6 +462,14 @@ Resources:
                   - 'arn:aws:sagemaker:*:*:user-profile/*'
                   - 'arn:aws:sagemaker:*:*:app/*'
                   - 'arn:aws:sagemaker:*:*:flow-definition/*'
+              - Effect: Allow
+                Action:
+                  - 'sqs:*'
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - 'lambda:*'
+                Resource: "*"
       RoleName: !Join ['-', ['SM-Gitlab-Example-Use-Role', !Select [4, !Split ['-', !Select [2, !Split ['/', !Ref 'AWS::StackId']]]]]]
 
   ServiceCatalogProductRoleLaunchContstraint:
