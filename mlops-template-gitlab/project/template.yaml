@@ -190,6 +190,9 @@ Resources:
                         "--input_data": input_data_s3_uri
                       }
                   )
+                except:
+                  print("Could not start Glue ETL")
+              return {}
 
   PermissionForEventsToInvokeLambda: 
     Type: AWS::Lambda::Permission
