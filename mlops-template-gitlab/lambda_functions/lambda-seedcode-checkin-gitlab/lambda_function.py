@@ -136,6 +136,7 @@ def lambda_handler(event, context):
         build_project.variables.create({'key':'SAGEMAKER_PROJECT_ARN', 'value':'arn:aws:sagemaker:' + region + ':' + os.environ['AccountId'] + ':project/' + os.environ['SageMakerProjectName']})
         build_project.variables.create({'key':'SAGEMAKER_PIPELINE_ROLE_ARN', 'value' : os.environ['Role']})
         build_project.variables.create({'key':'GITLAB_IAM_ROLE_ARN', 'value' : os.environ['GitlabRoleARN']})
+        build_project.variables.create({'key':'CALLBACK_QUEUE_URL', 'value' : os.environ['CallbackQueueURL']})
     except Exception as e:
         logging.error("Project variables could not be created for model build")
         logging.error(e)

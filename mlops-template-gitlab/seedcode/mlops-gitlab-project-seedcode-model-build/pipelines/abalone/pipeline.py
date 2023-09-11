@@ -41,6 +41,11 @@ from sagemaker.workflow.steps import (
     ProcessingStep,
     TrainingStep,
 )
+from sagemaker.workflow.callback_step import (
+    CallbackStep,
+    CallbackOutput,
+    CallbackOutputTypeEnum
+)
 from sagemaker.workflow.step_collections import RegisterModel
 
 
@@ -101,6 +106,7 @@ def get_pipeline(
     sagemaker_project_arn=None,
     role=None,
     default_bucket=None,
+    queue_url=None,
     model_package_group_name="AbalonePackageGroup",
     pipeline_name="AbalonePipeline",
     base_job_prefix="Abalone",
@@ -132,30 +138,23 @@ def get_pipeline(
     )
     input_data = ParameterString(
         name="InputDataUrl",
-        default_value=f"s3://sagemaker-servicecatalog-seedcode-{region}/dataset/abalone-dataset.csv",
+        default_value="s3://l9-talpa-sagemaker-data/dataset/abalone-dataset.csv",
     )
 
-    # processing step for feature engineering
-    sklearn_processor = SKLearnProcessor(
-        framework_version="0.23-1",
-        instance_type=processing_instance_type,
-        instance_count=processing_instance_count,
-        base_job_name=f"{base_job_prefix}/sklearn-abalone-preprocess",
-        sagemaker_session=sagemaker_session,
-        role=role,
-    )
-    step_process = ProcessingStep(
-        name="PreprocessAbaloneData",
-        processor=sklearn_processor,
+    #processing step as above, but executed on AWS Glue.
+    step_glue_process = CallbackStep(
+        name="AWSGluePreprocess",
+        sqs_queue_url=queue_url,
+        inputs={
+            "input_location": input_data.default_value,
+            "glue_job_name": "Preprocess Abalone data"
+        },
         outputs=[
-            ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
-            ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
-            ProcessingOutput(output_name="test", source="/opt/ml/processing/test"),
+            CallbackOutput(output_name="train", output_type=CallbackOutputTypeEnum.String),
+            CallbackOutput(output_name="validation", output_type=CallbackOutputTypeEnum.String),
+            CallbackOutput(output_name="test", output_type=CallbackOutputTypeEnum.String),
         ],
-        code=os.path.join(BASE_DIR, "preprocess.py"),
-        job_arguments=["--input-data", input_data],
     )
-
     # training step for generating model artifacts
     model_path = f"s3://{sagemaker_session.default_bucket()}/{base_job_prefix}/AbaloneTrain"
     image_uri = sagemaker.image_uris.retrieve(
@@ -189,15 +188,11 @@ def get_pipeline(
         estimator=xgb_train,
         inputs={
             "train": TrainingInput(
-                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
-                    "train"
-                ].S3Output.S3Uri,
+                s3_data=step_glue_process.properties.Outputs["train"],
                 content_type="text/csv",
             ),
             "validation": TrainingInput(
-                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
-                    "validation"
-                ].S3Output.S3Uri,
+                s3_data=step_glue_process.properties.Outputs["validation"],
                 content_type="text/csv",
             ),
         },
@@ -227,9 +222,7 @@ def get_pipeline(
                 destination="/opt/ml/processing/model",
             ),
             ProcessingInput(
-                source=step_process.properties.ProcessingOutputConfig.Outputs[
-                    "test"
-                ].S3Output.S3Uri,
+                source=step_glue_process.properties.Outputs["test"],
                 destination="/opt/ml/processing/test",
             ),
         ],
@@ -288,7 +281,7 @@ def get_pipeline(
             model_approval_status,
             input_data,
         ],
-        steps=[step_process, step_train, step_eval, step_cond],
+        steps=[step_glue_process, step_train, step_eval, step_cond],
         sagemaker_session=sagemaker_session,
     )
     return pipeline

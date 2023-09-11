@@ -94,6 +94,7 @@ Resources:
           SeedCodeBucket: AWSDEFAULT___CODE_STAGING_BUCKET___
           ModelBuildSeedCode: AWSDEFAULT___PROJECT_NAME___/seedcode/mlops-gitlab-project-seedcode-model-build.zip
           ModelDeploySeedCode: AWSDEFAULT___PROJECT_NAME___/seedcode/mlops-gitlab-project-seedcode-model-deploy.zip
+          CallbackQueueURL: !Ref CallbackStepQueue
           Region: !Ref AWS::Region
           AccountId: !Ref AWS::AccountId
           Role: AWSDEFAULT___USE_ROLE___
@@ -150,6 +151,46 @@ Resources:
           Arn: !GetAtt GitLabPipelineTriggerLambda.Arn
           Id: !Sub sagemaker-${SageMakerProjectName}-trigger
   
+  CallbackStepLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub sagemaker-${SageMakerProjectId}-callback
+      Runtime: python3.9
+      Role: AWSDEFAULT___USE_ROLE___
+      Handler: index.lambda_handler
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          def lambda_handler(event, context):
+              for record in event["Records"]:
+                payload = json.loads(record["body"])
+                print(f"Processing record {payload}")
+
+                token = payload["token"]
+                print(f"Got token {token}")
+
+                status = payload.get("status")
+                if status == "Stopping":
+                  sagemaker_client=boto3.client("sagemaker")
+                  sagemaker_client.send_pipeline_execution_step_failure(CallbackToken=token)
+                  return
+
+                try:
+                  input_data_s3_uri = payload["arguments"]["input_location"]
+                  glue_job_name = payload["arguments"]["glue_job_name"]
+
+                  glue_client = boto3.client("glue")
+                  glue_client.start_job_run(
+                      JobName=glue_job_name,
+                      Arguments={
+                        "--token": token,
+                        "--input_data": input_data_s3_uri
+                      }
+                  )
+
   PermissionForEventsToInvokeLambda: 
     Type: AWS::Lambda::Permission
     Properties: 
@@ -185,3 +226,20 @@ Resources:
           Value: !Sub ${SageMakerProjectId}
         - Key: "sagemaker:project-name"
           Value: !Sub ${SageMakerProjectName}
+
+  CallbackStepQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      QueueName: !Sub ${SageMakerProjectName}-SM-Pipeline-CallbackQueue
+
+  SQSEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+          - "CallbackStepLambda"
+          - "Arn"
+      EventSourceArn:
+        Fn::GetAtt:
+          - "CallbackStepQueue"
+          - "Arn"
